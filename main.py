@@ -5,14 +5,15 @@ Created on Mon Sep 26 11:27:43 2022
 
 @author: nicola
 """
-
 import pandas as pd
 import json
 import re
-from urllib.parse import urlparse
-from urllib.request import urlretrieve, unquote
-from datetime import datetime as dt
-
+from sklearn.preprocessing import LabelEncoder
+from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.feature_extraction.text import CountVectorizer
+#models
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.neighbors import KNeighborsClassifier
 
 """
     return 
@@ -38,13 +39,52 @@ def makeJSON(data):
        
         
        
-df = pd.read_csv("data.txt", sep='\t')
+df = pd.read_csv("data_debug.txt", sep='\t')
 
-d_test = pd.DataFrame()
+d_learn = pd.DataFrame()
+d_url = df["user_json"]
+d_url = d_url.apply(json.loads)
+d_url = d_url.apply(makeJSON)
 
-d_test["urls"]= df["user_json"]
-#df["user_json"] = df["user_json"].apply(json.loads)
-d_test["urls"] = d_test["urls"].apply(json.loads)
-d_test["urls"] = d_test["urls"].apply(makeJSON)
+#Подгтовка данных, перевод в цифры
+cv = CountVectorizer()
+tf = TfidfTransformer()
+d_url = cv.fit_transform(d_url)
+d_url = tf.fit_transform(d_url)
 
-print (d_test.loc[0].urls)
+
+d_teach = pd.DataFrame()
+d_teach['gender'] = df['gender']
+d_teach['age'] = df['age']
+enc = LabelEncoder();
+d_t = enc.fit_transform(d_teach['gender'])
+#print(d_teach)
+
+cls = MultinomialNB()
+cls2 = KNeighborsClassifier(n_neighbors=5)
+cls.fit(d_url, d_t)
+cls2.fit(d_url,d_t)
+
+#testing
+df = pd.read_csv("data_debug_test.txt", sep='\t')
+
+d_learn = pd.DataFrame()
+d_url = df["user_json"]
+d_url = d_url.apply(json.loads)
+d_url = d_url.apply(makeJSON)
+d_t = enc.transform(df['gender'])
+
+
+print ( d_url )
+d_url = cv.transform(d_url)
+d_url = tf.transform(d_url)
+
+print (cls.predict(d_url))
+print (cls2.predict(d_url))
+print(d_t)
+
+accuracy = cls.score(d_url, d_t)
+print("Accuracy = {}%".format(accuracy * 100))
+
+accuracy = cls2.score(d_url, d_t)
+print("Accuracy = {}%".format(accuracy * 100))
