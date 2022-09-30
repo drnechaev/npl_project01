@@ -11,9 +11,18 @@ import re
 from sklearn.preprocessing import LabelEncoder
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.feature_extraction.text import CountVectorizer
+import pickle
+import os
+
+
+model_file = "npl_model.pickle"
+cv_file = "npl_cv.pickle"
+tf_file = "npl_tf.pickle"
+enc_file = "npl_enc.pickle"
+
 #models
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.neighbors import KNeighborsClassifier
+
+from sklearn import svm
 
 """
     return 
@@ -27,19 +36,25 @@ from sklearn.neighbors import KNeighborsClassifier
 """
 def urlParse(url):
     return re.split("^(https?\:)\/\/(([^:\/?#]*)(?:\:([0-9]+))?)([\/]{0,1}[^?#]*)(\?[^#]*|)(#.*|)$",   url)
- 
+
     
 def makeJSON(data):
     full_url_str = ""
     for url in data["visits"]:
-       urls_part = urlParse((url["url"]))
-       full_url_str += " " + urls_part[3] + " " +urls_part[5]
+        urls_part = urlParse((url["url"]))
+        full_url_str += " " + urls_part[3]  + urls_part[5]
        
     return full_url_str.strip()
-       
-        
-       
-df = pd.read_csv("data_debug.txt", sep='\t')
+
+def modelFileSave(filename, model):
+    with open('./' + filename, 'wb') as f:
+        pickle.dump(model, f)
+        os.chmod('./' + filename, 0o644)
+
+
+df = pd.read_csv("data.txt", sep='\t')
+
+df = df[(df.gender != '-') & (df.age != '-')]
 
 d_learn = pd.DataFrame()
 d_url = df["user_json"]
@@ -52,39 +67,24 @@ tf = TfidfTransformer()
 d_url = cv.fit_transform(d_url)
 d_url = tf.fit_transform(d_url)
 
-
+#Провекра
 d_teach = pd.DataFrame()
-d_teach['gender'] = df['gender']
-d_teach['age'] = df['age']
-enc = LabelEncoder();
-d_t = enc.fit_transform(d_teach['gender'])
-#print(d_teach)
+d_teach['age_gender'] = df['gender'].map(str) + " " + df['age']
+enc = LabelEncoder()
+d_teach = enc.fit_transform(d_teach['age_gender'])
 
-cls = MultinomialNB()
-cls2 = KNeighborsClassifier(n_neighbors=5)
-cls.fit(d_url, d_t)
-cls2.fit(d_url,d_t)
+cls = svm.SVC()
+print("Start teach svc")
+cls.fit(d_url,d_teach)
 
-#testing
-df = pd.read_csv("data_debug_test.txt", sep='\t')
-
-d_learn = pd.DataFrame()
-d_url = df["user_json"]
-d_url = d_url.apply(json.loads)
-d_url = d_url.apply(makeJSON)
-d_t = enc.transform(df['gender'])
+print("Teached... \nSaving...")
 
 
-print ( d_url )
-d_url = cv.transform(d_url)
-d_url = tf.transform(d_url)
+modelFileSave(model_file,cls)
+modelFileSave(cv_file,cv)
+modelFileSave(tf_file,tf)
+modelFileSave(enc_file,enc)
 
-print (cls.predict(d_url))
-print (cls2.predict(d_url))
-print(d_t)
+print("End")
 
-accuracy = cls.score(d_url, d_t)
-print("Accuracy = {}%".format(accuracy * 100))
 
-accuracy = cls2.score(d_url, d_t)
-print("Accuracy = {}%".format(accuracy * 100))
