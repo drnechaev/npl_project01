@@ -168,3 +168,6 @@ project01/npl_enc.pickle
 .idea/modules.xml
 *.pickle
 .idea/npl_project01.iml
+debug_test.txt
+gender_age_dataset.txt
+output.json
