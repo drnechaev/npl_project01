@@ -163,3 +163,7 @@ cython_debug/
 #.idea/
 
 *spyder*
+project01/npl_enc.pickle
+*.xml
+.idea/modules.xml
+*.pickle
