@@ -167,3 +167,4 @@ project01/npl_enc.pickle
 *.xml
 .idea/modules.xml
 *.pickle
+.idea/npl_project01.iml
