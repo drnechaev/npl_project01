@@ -15,10 +15,10 @@ import pickle
 import os
 
 
-model_file = "npl_model.pickle"
-cv_file = "npl_cv.pickle"
-tf_file = "npl_tf.pickle"
-enc_file = "npl_enc.pickle"
+model_file = "./project01/npl_model.pickle"
+cv_file = "./project01/npl_cv.pickle"
+tf_file = "./project01/npl_tf.pickle"
+enc_file = "./project01/npl_enc.pickle"
 
 #models
 
