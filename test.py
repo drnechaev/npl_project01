@@ -1,7 +1,22 @@
+"""
+TESTING MODELS
+
+"""
+
 import pandas as pd
+import numpy as np
 import json
 import re
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder, OrdinalEncoder
+from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.model_selection import train_test_split
 import pickle
+
+
+import npl_common as npl
+
+
 
 """
     return 
@@ -15,52 +30,88 @@ import pickle
 """
 
 
-def urlParse(url):
-    return re.split("^(https?\:)\/\/(([^:\/?#]*)(?:\:([0-9]+))?)([\/]{0,1}[^?#]*)(\?[^#]*|)(#.*|)$", url)
+#df = pd.read_csv("data.txt", sep='\t')
+df = pd.read_csv("data_debug.txt", sep='\t')
+
+df = df[(df.gender != '-') & (df.age != '-')]
+
+d_learn = pd.DataFrame()
+#TODO: d_url - df['user_json'].apply(json.load).apply(makeJSON)
+d_url = df["user_json"]
+d_url = d_url.apply(json.loads)
+d_url = d_url.apply(npl.makeJSON)
+
+# Подгтовка данных, перевод в цифры
+cv = CountVectorizer()
+tf = TfidfTransformer()
+d_url = cv.fit_transform(d_url)
+d_url = tf.fit_transform(d_url)
+
+# Провекра
+#TODO: перенести на онехотэнкодер, можно пол так, а возраст по другому
+d_teach = pd.DataFrame()
+#d_teach['age_gender'] = df['gender'].map(str) + " " + df['age']
+d_teach = df['gender'].map(str) + " " + df['age']
+enc = LabelEncoder()
+d_teach = enc.fit_transform(d_teach)
 
 
-def makeJSON(data):
-    full_url_str = ""
-    for url in data["visits"]:
-        urls_part = urlParse((url["url"]))
-        full_url_str += " " + urls_part[3] + urls_part[5]
+X_train, X_test, y_train, y_test = train_test_split(d_url,d_teach ,
+                                   random_state=104,
+                                   test_size=0.2,
+                                   shuffle=True)
 
-    return full_url_str.strip()
+# models
+from sklearn import svm   #67
+from sklearn.multiclass import OneVsRestClassifier  #0.26 83%
+from sklearn.svm import LinearSVC
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import GaussianNB
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.linear_model import SGDClassifier
+from sklearn.ensemble import GradientBoostingClassifier
+from xgboost.sklearn import XGBClassifier
 
-print("=========================\nSTART TESTING\n=========================")
-"""
-#testing
-"""
+cls = []
+
+#cls.append( svm.SVC() )  #28,125 (full:29.136)
+#cls.append( OneVsRestClassifier(LinearSVC(random_state=0)) )  #27,375 (full:26.79)
+#cls.append(KNeighborsClassifier(n_neighbors=5)) #21,0 (full:
+#cls.append(LogisticRegression()) #28,49 not work
+#cls.append(GaussianNB()) #not work
+#cls.append(MultinomialNB()) #28,0   (full:26.42)
+#cls.append(SGDClassifier()) #27,625 (full:)
+#cls.append(GradientBoostingClassifier()) #28,375 (full: 28.36)    long
+cls.append(XGBClassifier()) #29,625  (full:29.219)
+
+
+print("Start teach")
+
+for idx, clsi in enumerate(cls):
+    print ("Teach for cls{}".format(idx))
+    clsi.fit(X_train, y_train)
+
+print("Teached... \nSaving...")
+
+# TESTING
+
 columns=['gender','age','uid','user_json']
-df = pd.read_csv("data_debug.txt", sep='\t') #, names=columns)
-
-
-def len_json(data):
-    return len(data["visits"])
+df = pd.read_csv("data_debug_test.txt", sep='\t', names=columns)
 
 d_url = df["user_json"]
 d_url = d_url.apply(json.loads)
-df['json_len'] = d_url.apply(len_json)
-#d_url = d_url.apply(makeJSON)
-
-print( df.groupby(["json_len"])['json_len'].count())
-
-exit(1)
-cv = pickle.load(open("./project01/npl_cv.pickle", 'rb'))
-tf = pickle.load(open("./project01/npl_tf.pickle", 'rb'))
-
+d_url = d_url.apply(npl.makeJSON)
 d_url = cv.transform(d_url)
 d_url = tf.transform(d_url)
 
-enc = pickle.load(open("./project01/npl_enc.pickle","rb"))
 d_test = pd.DataFrame()
 
 
-
 """
-#end testing
-"""
-cls = pickle.load(open("./project01/npl_model.pickle", 'rb'))
+for idx, item in enumerate(cls):
+    print ("Teach for cls{}".format(idx))
+    clsi.fit(d_url, d_teach)
 
 result = cls.predict(d_url);
 
@@ -73,9 +124,17 @@ data_out = data_out.drop(0,axis='columns')
 data_out.sort_values(by='uid',axis = 0, ascending = True, inplace = True)
 
 print(data_out)
+"""
 
-d_test['age_gender'] = df['gender'].map(str) + " " + df['age']
+d_test = df['gender'].map(str) + " " + df['age']
 d_test = enc.transform(d_test)
 
-accuracy = cls.score(d_url, d_test)
-print("Accuracy cls = {}%".format(accuracy * 100))
+#cls.append(pickle.load(open(model_file, 'rb')))
+
+for idx, clsi in enumerate(cls):
+    accuracy = clsi.score(X_test, y_test)
+    print ("Accurasy for cls{} named \"{}\" is {}".format(idx,type(clsi).__name__, accuracy * 100) )
+
+"""
+#end testing
+"""

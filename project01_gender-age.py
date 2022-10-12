@@ -3,8 +3,7 @@
 import pandas as pd
 import json
 import re
-import pickle
-import sys
+import npl_common as npl
 
 """
     return 
@@ -16,24 +15,11 @@ import sys
     [7]
     [8] hash
 """
-model_file = "./project01/npl_model.pickle"
-cv_file = "./project01/npl_cv.pickle"
-tf_file = "./project01/npl_tf.pickle"
-enc_file = "./project01/npl_enc.pickle"
-def urlParse(url):
-    return re.split("^(https?\:)\/\/(([^:\/?#]*)(?:\:([0-9]+))?)([\/]{0,1}[^?#]*)(\?[^#]*|)(#.*|)$", url)
-
-def makeJSON(data):
-    full_url_str = ""
-    for url in data["visits"]:
-        urls_part = urlParse((url["url"]))
-        full_url_str += " " + urls_part[3] + urls_part[5]
-
-    return full_url_str.strip()
 
 
-cv = pickle.load(open(cv_file, 'rb'))
-tf = pickle.load(open(tf_file, 'rb'))
+
+cv = npl.modelFileLoad(npl.cv_file) #pickle.load(open(cv_file, 'rb'))
+tf = npl.modelFileLoad(npl.tf_file) #pickle.load(open(tf_file, 'rb'))
 
 #df = pd.read_csv("data_debug_test.txt", sep='\t')
 columns=['gender','age','uid','user_json']
@@ -49,13 +35,13 @@ df = df[(df.gender == '-') & (df.age == '-')].reset_index()
 
 d_url = df["user_json"]
 d_url = d_url.apply(json.loads)
-d_url = d_url.apply(makeJSON)
+d_url = d_url.apply(npl.makeJSON)
 d_url = cv.transform(d_url)
 d_url = tf.transform(d_url)
 
-enc = pickle.load(open(enc_file,"rb"))
+enc = npl.modelFileLoad(npl.enc_file)
 
-cls = pickle.load(open(model_file, 'rb'))
+cls = npl.modelFileLoad(npl.model_file)
 result = cls.predict(d_url);
 
 data_out = pd.DataFrame( enc.inverse_transform(result) )
